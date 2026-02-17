@@ -28,25 +28,9 @@ export default function Navbar({ session }: NavbarProps) {
     const isAdmin = session?.user && (session.user as any).role === 'admin';
     const isAdminRoute = pathname.startsWith('/admin');
 
-    // Return null immediately if on admin route to avoid rendering the navbar
-    if (isAdminRoute) return null;
-
     const items = useMemo(() => {
         return isAdmin ? [...navItems, { name: 'Admin', href: '/admin' }] : navItems;
     }, [isAdmin]);
-
-    // Header scroll effect
-    useEffect(() => {
-        const handleScroll = () => setScrolled(window.scrollY > 20);
-        handleScroll();
-        window.addEventListener('scroll', handleScroll, { passive: true });
-        return () => window.removeEventListener('scroll', handleScroll);
-    }, []);
-
-    // Close mobile menu on route change
-    useEffect(() => {
-        setIsOpen(false);
-    }, [pathname]);
 
     // Prevent background scroll when mobile menu is open
     useEffect(() => {
@@ -55,6 +39,8 @@ export default function Navbar({ session }: NavbarProps) {
             document.body.style.overflow = '';
         };
     }, [isOpen]);
+
+    if (isAdminRoute) return null;
 
     return (
         <>

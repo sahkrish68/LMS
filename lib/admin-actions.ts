@@ -43,27 +43,32 @@ export async function createCourse(prevState: any, formData: FormData) {
 
     try {
         await connectToDatabase();
-        // Use a hardcoded ID or current user ID for instructor if available
-        // For now, I'll just allow it without instructor or put a placeholder ID if schema requires it.
-        // Schema requires instructor.
-        // Let's fetch the user by email from session to get ID.
-        const userEmail = session?.user?.email;
-        if (!userEmail) throw new Error("Not authenticated");
 
-        // Quick fix: find user by email
+        const userEmail = session?.user?.email;
+        if (!userEmail) {
+            console.error('Create Course Error: No user email in session');
+            return { message: 'Authentication Error: Email not found.' };
+        }
+
         const User = (await import('@/models/User')).default;
         const instructor = await User.findOne({ email: userEmail });
+
+        if (!instructor) {
+            console.error(`Create Course Error: User not found for email ${userEmail}`);
+            return { message: 'Authentication Error: User record not found.' };
+        }
 
         await Course.create({
             title,
             description,
             price,
-            instructor: instructor?._id,
-            isPublished: true, // Auto publish for demo
+            instructor: instructor._id,
+            isPublished: true,
         });
     } catch (error) {
+        console.error('Create Course Database Error:', error);
         return {
-            message: 'Database Error: Failed to Create Course.',
+            message: 'Database Error: Failed to Create Course. Check server logs.',
         };
     }
 
@@ -80,5 +85,44 @@ export async function deleteCourse(id: string) {
         revalidatePath('/courses');
     } catch (error) {
         return { message: 'Database Error: Failed to Delete Course.' };
+    }
+}
+
+export async function getUsers() {
+    try {
+        await connectToDatabase();
+        const User = (await import('@/models/User')).default;
+        const users = await User.find({}).sort({ createdAt: -1 }).lean();
+        // Convert _id and dates to strings to avoid serialization issues
+        return users.map((user: any) => ({
+            ...user,
+            _id: user._id.toString(),
+            createdAt: user.createdAt?.toISOString(),
+            updatedAt: user.updatedAt?.toISOString(),
+        }));
+    } catch (error) {
+        throw new Error('Failed to fetch users');
+    }
+}
+
+export async function deleteUser(id: string) {
+    try {
+        await connectToDatabase();
+        const User = (await import('@/models/User')).default;
+        await User.findByIdAndDelete(id);
+        revalidatePath('/admin/users');
+    } catch (error) {
+        return { message: 'Database Error: Failed to Delete User.' };
+    }
+}
+
+export async function updateUserRole(id: string, newRole: string) {
+    try {
+        await connectToDatabase();
+        const User = (await import('@/models/User')).default;
+        await User.findByIdAndUpdate(id, { role: newRole });
+        revalidatePath('/admin/users');
+    } catch (error) {
+        return { message: 'Database Error: Failed to Update User Role.' };
     }
 }

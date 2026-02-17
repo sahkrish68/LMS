@@ -9,7 +9,7 @@ import connectToDatabase from './lib/db';
 async function getUser(email: string) {
     try {
         await connectToDatabase();
-        const user = await User.findOne({ email }).select('+password');
+        const user = await User.findOne({ email }).select('+password').lean();
         return user;
     } catch (error) {
         console.error('Failed to fetch user:', error);
@@ -44,12 +44,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         async jwt({ token, user }) {
             if (user) {
                 token.role = user.role;
+                token.email = user.email; // Ensure email is in token
             }
             return token;
         },
         async session({ session, token }) {
             if (token && session.user) {
                 session.user.role = token.role;
+                session.user.email = token.email as string; // Ensure email is in session
             }
             return session;
         },
